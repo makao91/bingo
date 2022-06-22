@@ -34,14 +34,33 @@ var board = [][]BingoField{
 }
 
 func main() {
+	myApp := app.NewWithID("com.example.tutorial.preferences") //to unique store app data
+	clock := widget.NewLabel("")
+	updateTime(clock)
 
+	go func() {
+		for range time.Tick(time.Second) {
+			updateTime(clock)
+		}
+	}()
 	shuffleBingo()
 
-	myApp := app.New()
+	green := color.NRGBA{R: 0, G: 180, B: 0, A: 255}
+
+	text1 := canvas.NewText("Hello", green)
+	text2 := canvas.NewText("There", green)
+	text2.Move(fyne.NewPos(20, 20))
+	//content := container.NewWithoutLayout(text1, text2)
+	content := container.New(layout.NewGridLayout(2), text1, text2)
+
 	r := rand.New(rand.NewSource(99))
 
-	myWindow := myApp.NewWindow("Gopher")
-	setMenu(myApp, myWindow)
+	myWindowOne := myApp.NewWindow("Gopher")
+	myWindowTwo := myApp.NewWindow("Moderator")
+	myWindowFour := myApp.NewWindow("Layouty")
+	myWindowFive := myApp.NewWindow("Timeout")
+	timeOutSelectorWidget := timeoutWindow(myApp)
+	setMenu(myApp, myWindowOne)
 
 	// Define a welcome text centered
 	text := canvas.NewText("Display a random Gopher!", color.White)
@@ -59,27 +78,64 @@ func main() {
 		{createRandomButton(r, gopherImg, &board[2][0]), createRandomButton(r, gopherImg, &board[2][1]), createRandomButton(r, gopherImg, &board[2][2])},
 	}
 	var game_fields = [][]*fyne.Container{
-		{createBoardField(r, gopherImg, &board[0][0]), createBoardField(r, gopherImg, &board[0][1]), createBoardField(r, gopherImg, &board[0][2])},
-		{createBoardField(r, gopherImg, &board[1][0]), createBoardField(r, gopherImg, &board[1][1]), createBoardField(r, gopherImg, &board[1][2])},
-		{createBoardField(r, gopherImg, &board[2][0]), createBoardField(r, gopherImg, &board[2][1]), createBoardField(r, gopherImg, &board[2][2])},
+		{createBoardField(), createBoardField(), createBoardField()},
+		{createBoardField(), createBoardField(), createBoardField()},
+		{createBoardField(), createBoardField(), createBoardField()},
 	}
 	table_of_buttons := makeTable(button_fields)
 	table_of_fields := makeTable(game_fields)
+	heheszki := widget.NewButton("Boczek! Ty grubasie!", func() {
+		myWindowThree := myApp.NewWindow("Kiepscy")
+		myWindowThree.SetContent(gopherImg)
+		myWindowThree.Show()
+	})
 	box := container.NewVBox(
-		table_of_buttons,
-		gopherImg,
 		table_of_fields,
+		clock,
+		table_of_buttons,
+		heheszki,
+	)
+	box_two := container.NewVBox(
+		makeUI(),
 	)
 	// Display our content
-	myWindow.SetContent(
-		box,
-	)
+	myWindowOne.SetContent(box)
+	myWindowTwo.SetContent(box_two)
+	myWindowFour.SetContent(content)
+	myWindowFive.SetContent(timeOutSelectorWidget)
+	myWindowOne.Show()
+	myWindowTwo.Show()
+	myWindowFour.Show()
+	myWindowFive.Show()
 
 	// Close the App when Escape key is pressed
-	closeAppOnEscape(myWindow, myApp)
-	myWindow.Resize(fyne.Size{Height: 500, Width: 300})
+	closeAppOnEscape(myWindowOne, myApp)
+	myWindowOne.Resize(fyne.Size{Height: 500, Width: 300})
 	// Show window and run app
-	myWindow.ShowAndRun()
+	myApp.Run()
+}
+
+func timeoutWindow(myApp fyne.App) *widget.Select {
+	var timeout time.Duration
+	timeoutSelector := widget.NewSelect([]string{"10 seconds", "30 seconds", "1 minute"}, func(selected string) {
+		switch selected {
+		case "10 seconds":
+			timeout = 10 * time.Second
+		case "30 seconds":
+			timeout = 30 * time.Second
+		case "1 minute":
+			timeout = time.Minute
+		}
+
+		myApp.Preferences().SetString("AppTimeout", selected)
+	})
+	timeoutSelector.SetSelected(myApp.Preferences().StringWithFallback("AppTimeout", "10 seconds"))
+	go func() {
+		time.Sleep(timeout)
+		myApp.Quit()
+	}()
+
+	return timeoutSelector
 }
 
 func setMenu(myApp fyne.App, myWindow fyne.Window) {
@@ -133,14 +189,21 @@ func createRandomButton(r *rand.Rand, gopherImg *canvas.Image, game_field *Bingo
 	return container1
 }
 
-func createBoardField(r *rand.Rand, gopherImg *canvas.Image, game_field *BingoField) *fyne.Container {
-	//counter := true
-	rect := canvas.NewRectangle(color.Black)
+func createBoardField() *fyne.Container {
+	blue := color.NRGBA{R: 0, G: 0, B: 180, A: 255}
+	rect := canvas.NewRectangle(blue)
 	rect.SetMinSize(fyne.Size{Height: 50, Width: 30})
 	field_container := container.New(
 		layout.NewMaxLayout(),
 		rect,
 	)
+	go func() {
+		time.Sleep(time.Second)
+		green := color.NRGBA{R: 0, G: 180, B: 0, A: 255}
+		rect.FillColor = green
+		rect.Refresh()
+	}()
+
 	return field_container
 }
 func closeAppOnEscape(myWindow fyne.Window, myApp fyne.App) {
@@ -175,7 +238,7 @@ func makeTable(rows [][]*fyne.Container) *fyne.Container {
 		}
 		objects[k] = box
 	}
-	return container.NewHBox(objects...)
+	return container.New(layout.NewGridLayout(3), objects...)
 }
 
 func rowsToColumns(rows [][]*fyne.Container) [][]*fyne.Container {
@@ -186,4 +249,17 @@ func rowsToColumns(rows [][]*fyne.Container) [][]*fyne.Container {
 		}
 	}
 	return columns
+}
+func updateTime(clock *widget.Label) {
+	formatted := time.Now().Format("Time: 03:04:05")
+	clock.SetText(formatted)
+}
+func makeUI() (*widget.Label, *widget.Entry) {
+	out := widget.NewLabel("Hello championie!")
+	in := widget.NewEntry()
+
+	in.OnChanged = func(content string) {
+		out.SetText("Hello championie " + content + "!")
+	}
+	return out, in
 }
