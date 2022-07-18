@@ -41,7 +41,7 @@ var player_one_view_fields [][]*fyne.Container
 var red_canvas = canvas.NewRectangle(
 	color.NRGBA{R: 255, G: 0, B: 0, A: 255})
 var green_canvas = canvas.NewRectangle(
-	color.NRGBA{R: 0, G: 255, B: 0, A: 0})
+	color.NRGBA{R: 0, G: 255, B: 0, A: 255})
 var table_of_player_fields *fyne.Container
 
 func main() {
@@ -80,9 +80,9 @@ func main() {
 
 	// Display a vertical box containing text, image and button
 	var moderator_fields = [][]*fyne.Container{
-		{createModeratorRandomButton(r, gopherImg, &board[0][0]), createModeratorRandomButton(r, gopherImg, &board[0][1]), createModeratorRandomButton(r, gopherImg, &board[0][2])},
-		{createModeratorRandomButton(r, gopherImg, &board[1][0]), createModeratorRandomButton(r, gopherImg, &board[1][1]), createModeratorRandomButton(r, gopherImg, &board[1][2])},
-		{createModeratorRandomButton(r, gopherImg, &board[2][0]), createModeratorRandomButton(r, gopherImg, &board[2][1]), createModeratorRandomButton(r, gopherImg, &board[2][2])},
+		{createModeratorRandomButton(&board[0][0]), createModeratorRandomButton(&board[0][1]), createModeratorRandomButton(&board[0][2])},
+		{createModeratorRandomButton(&board[1][0]), createModeratorRandomButton(&board[1][1]), createModeratorRandomButton(&board[1][2])},
+		{createModeratorRandomButton(&board[2][0]), createModeratorRandomButton(&board[2][1]), createModeratorRandomButton(&board[2][2])},
 	}
 
 	player_one_fields = board
@@ -97,9 +97,9 @@ func main() {
 		{createBoardField(), createBoardField(), createBoardField()},
 		{createBoardField(), createBoardField(), createBoardField()},
 	}
-	table_of_buttons := makeTable(moderator_fields)
-	table_of_fields := makeTable(game_fields)
-	table_of_player_fields := makeTable(player_one_view_fields)
+	table_of_buttons := makeTable(&moderator_fields)
+	table_of_fields := makeTable(&game_fields)
+	table_of_player_fields = makeTable(&player_one_view_fields)
 	heheszki := widget.NewButton("Boczek! Ty grubasie!", func() {
 		myWindowThree := myApp.NewWindow("Kiepscy")
 		myWindowThree.SetContent(gopherImg)
@@ -132,32 +132,31 @@ func main() {
 	//go changeFieldsColor()
 }
 
+//TODO klikane gziki nie wskazują odpowiedniego pola gry i flaga sie źle ustawia. i te fory są tu pojebane
 func changeFieldsColor() {
-	for _, rows := range player_one_fields {
-		for _, field := range rows {
+	for row_index, rows := range player_one_fields {
+		for column_index, field := range rows {
 			if field.activated == true {
-				for index_one, view_rows := range player_one_view_fields {
-					for index_two, view_field := range view_rows {
-						//view_field.Remove(view_field.Objects[0])
-						////field.Objects[0].FillColor = color.NRGBA{R: 0, G: 255, B: 0, A: 0}
-						//view_field.Add(green_canvas)
-						//view_field.Refresh()
-						new_container := container.New(
-							// layout of container
-							layout.NewMaxLayout(),
-							// first use btn color
-							green_canvas,
-							// 2nd btn widget
-							view_field.Objects[1],
-						)
-						player_one_view_fields[index_one][index_two] = new_container
-						player_one_view_fields[index_one][index_two].Refresh()
-						table_of_player_fields.Refresh()
+
+				for index_one, player_one_rows := range player_one_view_fields {
+					for index_two, player_one_field := range player_one_rows {
+						if player_one_field.Objects[1] == player_one_field.Objects[1] {
+							game_field := *player_one_view_fields[row_index][column_index]
+							new_container := container.New(
+								// layout of container
+								layout.NewMaxLayout(),
+								// first use btn color
+								green_canvas,
+								// 2nd btn widget
+								game_field.Objects[1],
+							)
+							*player_one_view_fields[index_one][index_two] = *new_container
+							*player_one_view_fields[row_index][column_index] = *new_container
+							table_of_player_fields.Refresh()
+						}
 					}
 				}
 			}
-			//field.Remove(field.Objects[0])
-			//field.Objects[0].FillColor = color.NRGBA{R: 0, G: 255, B: 0, A: 0}
 		}
 	}
 }
@@ -206,23 +205,20 @@ func setMenu(myApp fyne.App, myWindow fyne.Window) {
 	myWindow.SetMainMenu(mainMenu)
 }
 
-func createModeratorRandomButton(r *rand.Rand, gopherImg *canvas.Image, game_field *BingoField) *fyne.Container {
-	randomBtn := widget.NewButton(game_field.name, func() {
-		random := r.Intn(6)
-		resource, _ := fyne.LoadResourceFromPath(cyclist[random])
-		gopherImg.Resource = resource
-		//Redrawn the image with the new path
-		gopherImg.Refresh()
+func createModeratorRandomButton(game_field *BingoField) *fyne.Container {
+	randomBtn := widget.NewButton(game_field.name, nil)
+	randomBtn.OnTapped = func() {
 		for index_one, rows := range player_one_fields {
 			for index_two, field := range rows {
-				field.activated = true
-				player_one_fields[index_one][index_two] = field
+				if field.name == game_field.name {
+					field.activated = true
+					player_one_fields[index_one][index_two] = field
+				}
 			}
 		}
 		changeFieldsColor()
 		fmt.Println(player_one_fields)
-
-	})
+	}
 
 	randomBtn.Importance = widget.LowImportance
 
@@ -298,9 +294,9 @@ func shuffleBingo(board [][]BingoField) {
 		}
 	}
 }
-func makeTable(rows [][]*fyne.Container) *fyne.Container {
+func makeTable(rows *[][]*fyne.Container) *fyne.Container {
 
-	columns := rowsToColumns(rows)
+	columns := rowsToColumns(*rows)
 
 	objects := make([]fyne.CanvasObject, len(columns))
 	for k, col := range columns {
