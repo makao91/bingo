@@ -137,23 +137,27 @@ func changeFieldsColor() {
 	for row_index, rows := range player_one_fields {
 		for column_index, field := range rows {
 			if field.activated == true {
-
+				player_field_activated := createPlayerField(&field, red_canvas)
 				for index_one, player_one_rows := range player_one_view_fields {
 					for index_two, player_one_field := range player_one_rows {
-						if player_one_field.Objects[1] == player_one_field.Objects[1] {
-							game_field := *player_one_view_fields[row_index][column_index]
-							new_container := container.New(
-								// layout of container
-								layout.NewMaxLayout(),
-								// first use btn color
-								green_canvas,
-								// 2nd btn widget
-								game_field.Objects[1],
-							)
-							*player_one_view_fields[index_one][index_two] = *new_container
-							*player_one_view_fields[row_index][column_index] = *new_container
-							table_of_player_fields.Refresh()
+
+						if player_one_field.Objects[1] == player_field_activated.Objects[1] {
+							field_to_check := player_one_field.Objects[1]
+							fmt.Println(field_to_check, player_field_activated)
+
 						}
+
+						new_container := container.New(
+							// layout of container
+							layout.NewMaxLayout(),
+							// first use btn color
+							green_canvas,
+							// 2nd btn widget
+							player_one_field.Objects[1],
+						)
+						*player_one_view_fields[index_one][index_two] = *new_container
+						*player_one_view_fields[row_index][column_index] = *new_container
+						table_of_player_fields.Refresh()
 					}
 				}
 			}
@@ -204,21 +208,22 @@ func setMenu(myApp fyne.App, myWindow fyne.Window) {
 	)
 	myWindow.SetMainMenu(mainMenu)
 }
-
-func createModeratorRandomButton(game_field *BingoField) *fyne.Container {
-	randomBtn := widget.NewButton(game_field.name, nil)
-	randomBtn.OnTapped = func() {
+func toLaunchModeratorButton(button_name string) func() {
+	return func() {
 		for index_one, rows := range player_one_fields {
 			for index_two, field := range rows {
-				if field.name == game_field.name {
+				if field.name == button_name {
 					field.activated = true
 					player_one_fields[index_one][index_two] = field
 				}
 			}
 		}
 		changeFieldsColor()
-		fmt.Println(player_one_fields)
 	}
+}
+func createModeratorRandomButton(game_field *BingoField) *fyne.Container {
+	randomBtn := widget.NewButton(game_field.name, nil)
+	randomBtn.OnTapped = toLaunchModeratorButton(game_field.name)
 
 	randomBtn.Importance = widget.LowImportance
 
